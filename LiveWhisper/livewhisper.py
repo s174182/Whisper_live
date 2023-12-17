@@ -3,7 +3,7 @@ import whisper, os
 import numpy as np
 import sounddevice as sd
 from scipy.io.wavfile import write
-
+import pdb
 # This is my attempt to make psuedo-live transcription of speech using Whisper.
 # Since my system can't use pyaudio, I'm using sounddevice instead.
 # This terminal implementation can run standalone or imported for assistant.py
@@ -16,7 +16,7 @@ SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
 Threshold = 0.1     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
-EndBlocks = 40      # Number of blocks to wait before sending to Whisper
+EndBlocks = 10      # Number of blocks to wait before sending to Whisper
 
 class StreamHandler:
     def __init__(self, assist=None):
@@ -49,8 +49,10 @@ class StreamHandler:
             self.padding = EndBlocks
         else:
             self.padding -= 1
+            print(self.buffer.shape[0],"   :",self.padding)
             if self.padding > 1:
                 self.buffer = np.concatenate((self.buffer, indata))
+            
             elif self.padding < 1 < self.buffer.shape[0] > SampleRate: # if enough silence has passed, write to file.
                 self.fileready = True
                 write('dictate.wav', SampleRate, self.buffer) # I'd rather send data to Whisper directly..
@@ -62,8 +64,11 @@ class StreamHandler:
                 self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(SampleRate/10):], indata)) # SLOW
 
     def process(self):
+        #pdb.set_trace()
+        #print(self.fileready)
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
+            #pdb.set_trace()
             result = self.model.transcribe('dictate.wav',fp16=False,language='en' if English else '',task='translate' if Translate else 'transcribe')
             print(f"\033[1A\033[2K\033[0G{result['text']}")
             if self.asst.analyze != None: self.asst.analyze(result['text'])
